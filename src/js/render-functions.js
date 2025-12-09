@@ -39,6 +39,7 @@ let simplelightbox = new SimpleLightbox('.gallery-container-a ', {
   captionsData: 'alt',
   captionPosition: 'bottom',
   captionDelay: 250,
+  refresh: true,
 });
 
 function createGallery (images) {
