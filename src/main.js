@@ -22,13 +22,14 @@ const refs = {
     let query = "";
     let currentPage = 1;
     const per_page = 15;
+    let totalHits = 0;
 
     hideLoadMoreButton();
 
 refs.form.addEventListener("submit", async event => {
     event.preventDefault();
 
-    clearGallery();
+
 
     const serchQuery = event.target.elements['search-text'].value.trim();
 
@@ -44,11 +45,14 @@ refs.form.addEventListener("submit", async event => {
         return;
     }
 
+    clearGallery();
+    hideLoadMoreButton();
     query = serchQuery;
     currentPage = 1;
     showLoader();
     
-    const data = await getImagesByQuery(serchQuery,currentPage)
+   try {
+     const data = await getImagesByQuery(serchQuery, currentPage, per_page)
          if (!data || data.hits.length === 0) {
             hideLoader();
                 iziToast.error({
@@ -62,42 +66,56 @@ refs.form.addEventListener("submit", async event => {
                 return;
             }
 
+        totalHits = data.totalHits;
         createGallery(data.hits);
-        hideLoader();
 
-        const totalPages = Math.ceil(data.totalHits / per_page);
-
-        if(totalPages >= per_page) {
+        if(currentPage * per_page < totalHits){
             showLoadMoreButton();
-        }else {
+        }else{
             hideLoadMoreButton();
         }
+   }catch(error){
+        iziToast.error({
+            message: "Something went wrong",
+            messageColor: 'white',
+            messageSize: '20',
+            backgroundColor: 'red',
+            position: 'topRight',
+            timeout: 2000,
+        });
+        hideLoadMoreButton();
+   } finally {
+        hideLoader();
+        refs.form.reset();
+   }
 });
 
 refs.loaderBtn.addEventListener("click", async ()=> {
-    try{
-        currentPage += 1;
+       currentPage += 1;
+        hideLoadMoreButton();
         showLoader();
 
-        const data = await getImagesByQuery(query,currentPage);
+    try{
+        const data = await getImagesByQuery(query, currentPage, per_page);
 
         createGallery(data.hits);
 
-        const totalPages = Math.ceil(data.totalHits / per_page);
+        const firsCart = document.querySelector('.gallery-container');
+        if (firsCart) {
+            const { height: cardHeight } = firsCart.getBoundingClientRect();
+            window.scrollBy({
+                top: cardHeight * 2,
+                behavior: 'smooth',
+            });
+        }
 
-        const {height: cardHeight} = refs.gallery.getBoundingClientRect();
-        window.scrollBy({
-            top: cardHeight * 2,
-            behavior: "smooth",
-        });
-
-        if (currentPage > totalPages) {
+        if (currentPage * per_page < totalHits) {
             hideLoadMoreButton();
             iziToast.info({
                 message: "You've reached the end of search results.",
                 messageColor: 'white',
                 messageSize: '20',
-                backgroundColor: 'blue',
+                backgroundColor: 'red',
                 position: 'topRight',
                 timeout: 2000,
             });
