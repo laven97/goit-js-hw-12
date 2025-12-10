@@ -16,25 +16,23 @@ const refs = {
     form: document.querySelector(".form"),
     loader: document.querySelector(".loader"),
     loaderBtn: document.querySelector(".load-more-btn"),
+    gallery: document.querySelector(".gallery"),
 };
 
-let query;
-let currentPage;
+    let query = "";
+    let currentPage = 1;
+    const per_page = 15;
 
-hideLoadMoreButton();
+    hideLoadMoreButton();
 
 refs.form.addEventListener("submit", async event => {
     event.preventDefault();
 
     clearGallery();
-    hideLoadMoreButton();
 
-    const searchQuery = event.target.elements['search-text'].value.trim();
-    query = searchQuery;
-    currentPage = 1;
+    const serchQuery = event.target.elements['search-text'].value.trim();
 
-
-    if (searchQuery === "") {
+    if (!serchQuery) {
         iziToast.error({
             message: 'Please enter a search query',
             messageColor: 'white',
@@ -46,10 +44,13 @@ refs.form.addEventListener("submit", async event => {
         return;
     }
 
+    query = serchQuery;
+    currentPage = 1;
     showLoader();
-
-    const data = await getImagesByQuery(searchQuery)
-         if (data.hits.length === 0) {
+    
+    const data = await getImagesByQuery(serchQuery,currentPage)
+         if (!data || data.hits.length === 0) {
+            hideLoader();
                 iziToast.error({
                     message: 'No images found. Please try again.',
                     messageColor: 'white',
@@ -63,31 +64,34 @@ refs.form.addEventListener("submit", async event => {
 
         createGallery(data.hits);
         hideLoader();
-        showLoadMoreButton();
 
+        const totalPages = Math.ceil(data.totalHits / per_page);
+
+        if(totalPages >= per_page) {
+            showLoadMoreButton();
+        }else {
+            hideLoadMoreButton();
+        }
 });
 
-refs.loaderBtn.addEventListener("click",async ()=> {
+refs.loaderBtn.addEventListener("click", async ()=> {
     try{
         currentPage += 1;
         showLoader();
 
-        const data = await getImagesByQuery(query, currentPage)
+        const data = await getImagesByQuery(query,currentPage);
 
         createGallery(data.hits);
 
-        hideLoader();
+        const totalPages = Math.ceil(data.totalHits / per_page);
 
-        const {height: cardHeight} = document.querySelector(".gallery-container").getBoundingClientRect();
-
+        const {height: cardHeight} = refs.gallery.getBoundingClientRect();
         window.scrollBy({
             top: cardHeight * 2,
             behavior: "smooth",
         });
 
-        let totalPages = Math.ceil(data.totalHits / query.per_page);
-
-        if (currentPage >= totalPages) {
+        if (currentPage > totalPages) {
             hideLoadMoreButton();
             iziToast.info({
                 message: "You've reached the end of search results.",
@@ -110,7 +114,6 @@ refs.loaderBtn.addEventListener("click",async ()=> {
         }
         finally {
             hideLoader();
-            refs.form.reset();
         }
     }
 );
